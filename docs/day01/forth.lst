@@ -1,0 +1,62 @@
+                      ; AlexForth for 6809
+                      ; Copyright (C) 2023 Alexandre Dumont <adumont@gmail.com>
+                      ; SPDX-License-Identifier: GPL-3.0-only
+                      ;
+                      ; Target CPU is Motorola 6809
+
+0300                  TOP_HW_STACK    EQU $0300
+
+                      ;
+                      ; Code starts here
+                      ;
+0000                      CODE
+
+8000                      ORG $8000
+8000                      SETDP $00           ; instructs assembler that our Direct Page is $00xx
+
+8000  4F                  CLRA
+8001  1F8B                TFR A, DP
+8003  CE0100              LDU #$0100          ; User stack will be in direct page? Good idea?
+8006  10CE0300            LDS #TOP_HW_STACK   ; Hardware/CPU stack is in pages 0100-0200 (0300 downwards)
+
+                      ; Y is our IP register
+                      ; NEXT is simply JMP [,Y++]
+
+                      NEXT macro
+                          JMP [,Y++]
+                          endm
+
+                      ; Enter the thread:
+800A  108E8034            LDY #FORTH_THREAD
+800E                      NEXT
+800E  6EB1                JMP [,Y++]
+
+                      ; Dictionary
+8010                  h_PUSH1
+8010  0000                    FDB $0000
+8012  0131                FCB 1, "1"
+8014                  do_PUSH1
+8014  CC0001              LDD #$01
+8017  3606                PSHU D
+8019                          NEXT
+8019  6EB1                JMP [,Y++]
+
+801B                  h_PLUS
+801B  8010                    FDB h_PUSH1
+801D  012B                    FCB 1, "+"
+801F                  do_PLUS
+801F  3706                PULU  D
+8021  E3C4                ADDD ,U
+8023  EDC4                STD  ,U
+8025                          NEXT
+8025  6EB1                JMP [,Y++]
+
+8027                  h_ENDLESS
+8027  801B                    FDB h_PLUS
+8029  07454E444C455353     FCB 7, "ENDLESS"
+8031                  do_ENDLESS
+8031  7E8031              JMP *
+
+                      ; Small Forth Thread (program)
+8034                  FORTH_THREAD
+8034  80148014801F8031     FDB do_PUSH1, do_PUSH1, do_PLUS, do_ENDLESS
