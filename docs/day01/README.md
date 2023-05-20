@@ -9,7 +9,7 @@ In this article we'll define the first pieces and assemble them together into a 
 - An Inner Interpreter, which will be responsible for moving along the thread and run each word in turn.
 - A small dictionary of words: we will define 3 words,
 
-Now let's comment each piece one by one.
+Now let's comment each piece one by one. The full code listing is [here](forth.lst).
 
 ## Data stack
 
