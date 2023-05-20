@@ -1,10 +1,14 @@
 # AlexForth for 6809
 
-## Introduction
+# Introduction
 
 This is a port of my [AlexForth for 6502](https://github.com/adumont/hb6502/tree/main/forth#homebrew-6502-sbc---forth) to the 6809 processor.
 
-## Journal
+# Status
+
+This Forth is a work in progress.
+
+# Journal
 
 Follow me in this *journal* on how I implement AlexForth for 6809:
 
