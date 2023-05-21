@@ -2,12 +2,12 @@
 
 # Day 1: Inner Interpreter and Manually Threaded code
 
-In this article we'll define the first pieces and assemble them together into a working 6809 assembly program that will form the seed a DTC Forth language. Here is what we need to start with:
+In this article we'll define the first pieces and assemble them together into a working 6809 assembly program that will form the seed of a DTC Forth language. Here is what we need to start with:
 
 - A data stack,
+- A small dictionary of words: we will define 3 words,
 - A Forth program (or Thread), made with the 3 words we have defined.
 - An Inner Interpreter, which will be responsible for moving along the thread and run each word in turn.
-- A small dictionary of words: we will define 3 words,
 
 Now let's comment each piece one by one. The full code listing is [here](forth.lst).
 
@@ -17,7 +17,7 @@ For the data stack, we'll use the 6809 user stack, which is based on the `U` reg
 
 ## Forth Thread (program)
 
-This Forth will be a DTC Forth: Direct Threaded Forth. That means that, when laid out in memory, each cell (2 bytes as we're on a 16bit CPU) will represent the address of the code to be executed by the inner interpreter.
+This Forth will be a *DTC* Forth: *Direct Threaded Code* Forth. That means that, when laid out in memory, each cell (2 bytes as we're on a 16bit CPU) will represent the address of the code to be executed by the inner interpreter.
 
 For example, let's suppose our Forth program starts a $8034 and reads like this:
 
