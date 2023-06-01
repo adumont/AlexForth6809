@@ -157,6 +157,23 @@ If we break the bytes at $8034 in 16-bit addresses, we can better see that we ha
 
 We clearly see now that the Forth program is: `1 1 + ENDLESS`. At the moment, we simply *compiled* it manually by using the labels of the corresponding words' CFAs in the assembly code.
 
+## Execution
+
+We will now execute our *minimal Forth* in [EMU6809](https://github.com/adumont/emu6809#emu6809-motorola-6809-emulator-in-forth).
+
+Right after loading the `forth.bin` info EMU6809, we issue the `status` command which yields:
+
+```
+status
+A  B X    Y    U    S    DP eFhInzvc CC PC
+0000 0000 0000 0000 0000 00 01010000 50 8000 > 4F 1F 8B CE 01
+     0000 0000 0000 0000
+     0000 0000 0000 0000  ok
+```
+
+We can see for example that all registers are initialized at 0. The line below `X`, `Y`, `U` and `S` shows the value at `[X]`, `[Y]`, `[U]` and `[S]` respectively. The last line shows the value at `[X+2]`, `[Y+2]`, `[U+2]` and `[S+2]`.
+
+We can see `PC` is at $8000. We can step through each instruction using the `n` command and follow the values of `PC`, and the other registers like `Y` as well as what is on the stack under `U`, or the return stack under `S`.
 
 # Footnotes
 
