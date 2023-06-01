@@ -1,0 +1,104 @@
+                      ; AlexForth for 6809
+                      ; Copyright (C) 2023 Alexandre Dumont <adumont@gmail.com>
+                      ; SPDX-License-Identifier: GPL-3.0-only
+                      ;
+                      ; Target CPU is Motorola 6809
+
+0300                  TOP_HW_STACK    EQU $0300
+
+                      ;
+                      ; Code starts here
+                      ;
+0000                      CODE
+
+8000                      ORG $8000
+8000                      SETDP $00           ; instructs assembler that our Direct Page is $00xx
+
+8000  4F                  CLRA
+8001  1F8B                TFR A, DP
+8003  CE0100              LDU #$0100          ; User stack will be in direct page? Good idea?
+8006  10CE0300            LDS #TOP_HW_STACK   ; Hardware/CPU stack is in pages 0100-0200 (0300 downwards)
+
+                      ; Y is our IP register
+                      ; NEXT is simply JMP [,Y++]
+
+                      NEXT macro
+                          JMP [,Y++]
+                          endm
+
+                      ; Enter the thread:
+800A  108E806E            LDY #FORTH_THREAD
+800E                      NEXT
+800E  6EB1                JMP [,Y++]
+
+                      ; Dictionary
+8010                  h_COLON
+8010  0000                    FDB $0000
+8012  05444F434F4C            FCB 5, "DOCOL"
+8018                  do_COLON            ; COLON aka ENTER
+                          ; push IP to Return Stack
+8018  3420                PSHS Y
+
+801A  10AE3E              LDY -2,Y    ; we get W --> Y
+801D  3123                LEAY 3,Y    ; Y+3 -> Y
+801F                          NEXT
+801F  6EB1                JMP [,Y++]
+
+8021                  h_SEMI
+8021  8010                    FDB h_COLON
+8023  0453454D49              FCB 4, "SEMI"
+8028                  do_SEMI
+                          ; pull IP from Return Stack
+8028  3520                PULS Y
+802A                          NEXT
+802A  6EB1                JMP [,Y++]
+
+802C                  h_PUSH1
+802C  8021                    FDB h_SEMI
+802E  0131                FCB 1, "1"
+8030                  do_PUSH1
+8030  CC0001              LDD #$01
+8033  3606                PSHU D
+8035                          NEXT
+8035  6EB1                JMP [,Y++]
+
+8037                  h_PLUS
+8037  802C                    FDB h_PUSH1
+8039  012B                    FCB 1, "+"
+803B                  do_PLUS
+803B  3706                PULU  D
+803D  E3C4                ADDD ,U
+803F  EDC4                STD  ,U
+8041                          NEXT
+8041  6EB1                JMP [,Y++]
+
+8043                  h_DUP
+8043  8037                    FDB h_PLUS
+8045  03445550                FCB 3, "DUP"
+8049                  do_DUP
+8049  ECC4                LDD ,U
+804B  3606                PSHU D
+804D                          NEXT
+804D  6EB1                JMP [,Y++]
+
+                      ; A test "colon word"!
+804F                  h_DOUBLE
+804F  8043                    FDB h_DUP
+8051  06444F55424C45          FCB 6, "DOUBLE"
+8058                  do_DOUBLE
+8058  7E8018              JMP do_COLON
+805B  8049                FDB do_DUP
+805D  803B                FDB do_PLUS
+805F  8028                FDB do_SEMI
+
+8061                  h_ENDLESS
+8061  804F                    FDB h_DOUBLE
+8063  07454E444C455353     FCB 7, "ENDLESS"
+806B                  do_ENDLESS
+806B  7E806B              JMP *
+
+                      ; Small Forth Thread (program)
+806E                  FORTH_THREAD
+806E  8030                FDB do_PUSH1
+8070  8058                FDB do_DOUBLE
+8072  806B                FDB do_ENDLESS
