@@ -17,7 +17,7 @@ For the data stack, we'll use the 6809 user stack, which is based on the `U` reg
 
 ## Forth Thread (program)
 
-This Forth will be a *DTC* Forth: *Direct Threaded Code* Forth. That means that, when laid out in memory, each cell (2 bytes as we're on a 16bit CPU) will represent the address of the code to be executed by the inner interpreter.
+This Forth will be a *DTC* Forth: *Direct Threaded Code* Forth. That means that, when laid out in memory, each cell (2 bytes as we're on a 16bit CPU) will represent the address of some 6809 assembly code to be executed by the inner interpreter. [^1]
 
 For example, let's suppose our Forth program starts a $8034 and reads like this:
 
@@ -153,5 +153,11 @@ Once reached, this word will never end, so we don't need to end it with `NEXT`.
 8034  80148014801F8031     FDB do_PUSH1, do_PUSH1, do_PLUS, do_ENDLESS
 ```
 
+If we break the bytes at $8034 in 16-bit addresses, we can better see that we have: $8014, $8014, $801F and $8031:
+
 We clearly see now that the Forth program is: `1 1 + ENDLESS`. At the moment, we simply *compiled* it manually by using the labels of the corresponding words' CFAs in the assembly code.
 
+
+# Footnotes
+
+[^1]: DTC is only one possible Forth threading model. There are other like ITC (Indirect Threading Code), TTC (Token Threading Code), STC (Subroutine Threading Code)... See [Moving Forth: Part 1](https://www.bradrodriguez.com/papers/moving1.htm) by Brad Rodriguez to learn more.
