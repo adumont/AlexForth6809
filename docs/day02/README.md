@@ -2,7 +2,7 @@
 
 # Day 2: Colon defined Words and Return Stack!
 
-Following with the fundamentals of Forth internals, we'll need the ability to extend the language. In FORTH, this is done using what we call colon defined words.
+Following with the fundamentals of FORTH internals, we'll need the ability to extend the language. In FORTH, this is done by creating what we call colon defined words.
 
 ## Example of a colon defined word
 
@@ -14,11 +14,11 @@ Let's break this down:
 
 `:` (Colon) instructs FORTH that we want to define a new colon word. The next token, `DOUBLE`, will be the name of the word.
 
-Then comes the definition of the word, in this case ` DUP + `. Indeed, running ` DUP + ` will double the value on the top of the data stack.
+Then comes the definition of the word, in this case ` DUP + `. Indeed, running `DUP` and `+` will double the value found on the top of the data stack.
 
-Finally `;` instructs FORTH this is the end of the word's definition.
+Finally `;` instructs FORTH of the end of the word's definition.
 
-If we already had a complete FORTH with a working FORTH interpreter (the *outer interter*), we could simply type the definition and that would compile it into the dictionary. But we're not there yet.
+If we already had a complete FORTH with a working FORTH interpreter (the *outer interpreter*), we could simply type the definition and that would compile it into the dictionary. But we're not there yet.
 
 That doesn't mean we can't define colon words though. It just means that for now we will need to compile them manually. But that's not hard!
 
@@ -27,7 +27,7 @@ That doesn't mean we can't define colon words though. It just means that for now
 We will now need new elements to enhance our FORTH:
 
 - A new stack, called the Return Stack
-- COLON (aka ENTER) and SEMI (aka EXIT)
+- `COLON` (or ENTER) and `SEMI` (or EXIT)
 - How to layout colon defined words like `DOUBLE`
 - And a new program using this word
 
@@ -45,7 +45,7 @@ Let's look at those from the end. To understand each piece we might need to imag
 
 Our test program is very simple: `PUSH1` will push a `1` to the stack. `DOUBLE` will double it (by executing `DUP` and `+`). `ENDLESS` will loop forever (end of the program).
 
-This time, I have formated it vertically instead of all the addresses on the same line (as we've seen in Day 1). In memory there will be no difference at all (it will be stored at `80308058806B`) but it may help for later.
+This time, I have formated it vertically instead of all the addresses on the same line (as we've seen in [Day 1](../day01/README.md)). In memory there will be no difference at all (it will be stored at `80308058806B`) but it may help for later.
 
 ## Layout of Colon Defined Words
 
@@ -65,15 +65,15 @@ This is what the word will look like in our dictionary (I have omited the header
 805F  8028                FDB do_SEMI
 ```
 
-We can see that like all the other words we had defined in Day 1, `DOUBLE` starts with a 6809 instruction: a `JMP` to `do_COLON`: so basically it will jump to run the code of `COLON`.
+We can see that like all the other words we had defined in [Day 1](../day01/README.md), `DOUBLE` starts with a 6809 instruction: a `JMP` to `do_COLON`: so basically it will jump to run the code of `COLON`.
 
-Unlike other words we've seen so far though, what follows the `JMP` to COLON aren't 6809 instructions! They are the addresses to `DUP`, `PLUS` and `SEMI`! The addresses are just inlined after the JMP do_COLON!
+Unlike other words we've seen so far though, what follows the `JMP` to COLON aren't 6809 instructions! They are the addresses to `DUP`, `PLUS` and `SEMI`! The addresses are just inlined after the `JMP do_COLON`!
 
 ## Follow the threaad!
 
 Look how similar the internal representation of `DOUBLE` is to the internal representation of our main FORTH program (see above):
 
-- main FORTH program:
+- Our main FORTH program:
 ```
                       ; Small Forth Thread (program)
 806E                  FORTH_THREAD
@@ -82,7 +82,7 @@ Look how similar the internal representation of `DOUBLE` is to the internal repr
 8072  806B                FDB do_ENDLESS
 ```
 
-- Code for DOUBLE (without COLON):
+- The code for `DOUBLE`:
 
 ```
 8058  7E8018              JMP do_COLON
@@ -91,11 +91,11 @@ Look how similar the internal representation of `DOUBLE` is to the internal repr
 805F  8028                FDB do_SEMI
 ```
 
-Indeed, both are just lists of addresses to the CFA (Code Field Address) of words (with the exception of JMP do_COLON).
+Indeed, both are just lists of addresses to the CFA (Code Field Address) of words (with the exception of the `JMP do_COLON`).
 
-Let's remember first our example from Day 1, especially how the `IP` FORTH register (in our `Y` CPU register) is a pointer to the address of the code to be run (the code of our primitive words). Remember how `NEXT` would jump to the code address pointed to by `IP` and advance it by 2 (to end up pointing to the next word's address).
+Let's remember first our example from [Day 1](../day01/README.md), especially how the `IP` FORTH register (in our `Y` CPU register) is a pointer to the address of the code to be run (the code of our primitive words). Remember how `NEXT` would jump to the code address pointed to by `IP` and advance it by 2 (to end up pointing to the next word's address).
 
-In day 1 we also used the word *thread* for our program. `IP` is a pointer that helps the Inner Interpreter keep track of where we are in the thread.
+In Day 1 we also used the word *thread* for our program. `IP` is a pointer that helps the Inner Interpreter keep track of where we are in the thread.
 
 In this case, we expect the inner interpreter to:
 
@@ -125,13 +125,13 @@ Now, `COLON` will update `IP` to point to the first address of its definition, t
     805F  8028                FDB do_SEMI
 ```
 
-How to do that? (Now it will get a little bit involved...)
+How to do that? (Now things will get a little bit involved...)
 
-$805B is actually 3 bytes after $8058 (3 byte is the length of the JMP do_COLON instruction)
+$805B is actually 3 bytes after $8058 (3 byte is the length of the `JMP do_COLON` instruction)
 
 And $8058 was the content of the cell (2 bytes) at `IP` before we incremented it by 2 in `NEXT`.
 
-So if we load what's at Y-2 into Y, and add 3 to Y, Y will now be $805B! And with that we've managed to reroute our thread into `DOUBLE`! We just need to run `NEXT`!
+So if we load what's at `Y`-2 into `Y`, and add 3 to `Y`, `Y` will now be $805B! And with that we've managed to reroute our thread into `DOUBLE`'s definition! We just need to run `NEXT`!
 
 Here's the code for `COLON` that does exactly that:
 
@@ -148,6 +148,8 @@ Here's the code for `COLON` that does exactly that:
 801F                          NEXT
 801F  6EB1                JMP [,Y++]
 ```
+
+Notice that `COLON` is independent of `DOUBLE`, and will work the same when called from any other word.
 
 ## SEMI
 
@@ -166,13 +168,13 @@ It simply pulls `IP` from the return stack and runs `NEXT`.
 802A  6EB1                JMP [,Y++]
 ```
 
-In our simple example above, `IP` will be restored to $8072, and `NEXT` will jump into `ENDLESS` to end our program as expected.
+In our simple example above, `IP` will be restored to $8072, and `NEXT` will jump into `ENDLESS` to continue with our program as expected.
 
 ## Return Stack
 
 In our implementation, the Return Stack will simply be the hardware (processor) stack.
 
-We've already seen how COLON will save `IP` to the return stack before rerouting the thread by updating `IP` to a new value right after the exact JMP that called COLON, in the definition of the *colon defined word*.
+We've already seen how COLON will save `IP` to the return stack before rerouting the thread by updating `IP` to a new address, that points right after the very `JMP` that called `COLON`, in the definition of the *colon defined word*.
 
 Once the *colon defined word* ends, it will run `SEMI` that will pull and restore `IP` from the return stack, and run `NEXT` putting up back on track in the original thread.
 
@@ -238,8 +240,8 @@ Secondary words words must start with `JMP do_COLON` and end with `do_SEMI`. The
 
 ## Recap
 
-We have added to our Forth the ability to define new high level word using other Forth words. For that we have needed:
+We have added to our FORTH the ability to define new high level word using other FORTH words. For that we have needed:
 
 - A new stack, called the Return Stack
-- A couple of primitived, COLON (aka ENTER) and SEMI (aka EXIT), that take care of the `IP` register, so we can follow the Forth thread through the definition of the colon defined words.
+- A couple of primitived, COLON (aka ENTER) and SEMI (aka EXIT), that take care of the `IP` register, so we can follow the FORTH thread through the definition of the colon defined words.
 - We've seen how we (manually) layout colon defined words in our dictionary.
