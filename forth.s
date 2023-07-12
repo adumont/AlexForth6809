@@ -33,7 +33,7 @@ NEXT macro
 ; Dictionary
 h_COLON
 	FDB $0000
-	FCB 5, "DOCOL"
+	FCB 5, "COLON"
 do_COLON            ; COLON aka ENTER
     ; push IP to Return Stack
     PSHS Y
@@ -67,17 +67,72 @@ do_PLUS
     STD  ,U
 	NEXT
 
-h_DUP
+h_SWAP
 	FDB h_PLUS
+	FCB 4, "SWAP"
+do_SWAP
+    LDX 2,U
+    LDD  ,U
+    STX  ,U
+    STD 2,U
+	NEXT
+
+h_ROT
+	FDB h_SWAP
+	FCB 3, "ROT"
+do_ROT
+    LDX 4,U
+
+    LDD 2,U
+    STD 4,U
+
+    LDD  ,U
+    STD 2,U
+
+    STX  ,U
+	NEXT
+
+h_NROT
+	FDB h_ROT
+	FCB 4, "-ROT"
+do_NROT
+    LDX  ,U
+
+    LDD 2,U
+    STD  ,U
+
+    LDD 4,U
+    STD 2,U
+
+    STX 4,U
+	NEXT
+
+h_DROP
+	FDB h_NROT
+	FCB 4, "DROP"
+do_DROP
+    LEAU 2,U
+	NEXT
+
+h_DUP
+	FDB h_DROP
 	FCB 3, "DUP"
 do_DUP
     LDD ,U
     PSHU D
 	NEXT
 
+h_OVER
+	FDB h_DROP
+	FCB 4, "OVER"
+do_OVER
+    LDD 2,U
+    PSHU D
+	NEXT
+
 ; A test "colon word"!
 h_DOUBLE
-	FDB h_DUP
+	FDB h_OVER
 	FCB 6, "DOUBLE"
 do_DOUBLE
     JMP do_COLON
@@ -94,5 +149,8 @@ do_ENDLESS
 ; Small Forth Thread (program)
 FORTH_THREAD
     FDB do_PUSH1
+    FDB do_DUP
     FDB do_DOUBLE
+    FDB do_DROP
+    FDB do_DROP
     FDB do_ENDLESS
