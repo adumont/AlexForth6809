@@ -5,9 +5,26 @@
 ; Target CPU is Motorola 6809
 
 TOP_HW_STACK    EQU $0300
+TOP_US_STACK    EQU $0400
+MAX_LEN         EQU $80		; Input Buffer MAX length, $80= 128 bytes
 
 ;
-; Code starts here
+; -----------------------------------------------------------
+;
+; RAM AREA - SYSTEM VARIABLES in Direct Page (fast access)
+
+    BSS
+    ORG $0000
+
+INP_LEN RMB     1   ; Length of the text in the input buffer
+INP_IDX RMB     1   ; Index into the INPUT Buffer (for reading it with KEY)
+LATEST  RMB     2   ; Store the latest ADDR of the Dictionary
+G1      RMB     2   ; General Purpose Register 1
+G2      RMB     2   ; General Purpose Register 2
+DPR	    RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
+
+;
+; -----------------------------------------------------------
 ;
     CODE
 
@@ -16,8 +33,10 @@ TOP_HW_STACK    EQU $0300
 
     CLRA
     TFR A, DP
-    LDU #$0100          ; User stack will be in direct page? Good idea?
-    LDS #TOP_HW_STACK   ; Hardware/CPU stack is in pages 0100-0200 (0300 downwards)
+    LDU #TOP_US_STACK   ; User stack will be at 03xx (0400 downwards)
+    LDS #TOP_HW_STACK   ; Hardware/CPU stack is in 2 pages 01xx-02xx (0300 downwards)
+    LDX #USER_BASE
+    STX DPR             ; initialize Dictionary Pointer
 
 ; Y is our IP register
 ; NEXT is simply JMP [,Y++]
@@ -130,9 +149,28 @@ do_OVER
     PSHU D
 	NEXT
 
+h_LIT
+	FDB h_OVER
+	FCB 3, "LIT"
+do_LIT
+    ; Push a literal word (2 bytes)
+    ; (IP) aka Y points to literal instead of next instruction
+    LDD ,Y++
+    PSHU D
+	NEXT
+
+h_JUMP
+	FDB h_LIT
+	FCB 4, "JUMP"
+do_JUMP
+    ; (IP) points to literal address to jump to
+    ; instead of next word
+    LDY ,Y
+	NEXT
+
 ; A test "colon word"!
 h_DOUBLE
-	FDB h_OVER
+	FDB h_JUMP
 	FCB 6, "DOUBLE"
 do_DOUBLE
     JMP do_COLON
@@ -149,8 +187,19 @@ do_ENDLESS
 ; Small Forth Thread (program)
 FORTH_THREAD
     FDB do_PUSH1
-    FDB do_DUP
-    FDB do_DOUBLE
-    FDB do_DROP
-    FDB do_DROP
+    FDB do_LIT
+    FDB $1234
+    FDB do_JUMP
+    FDB FORTH_THREAD
     FDB do_ENDLESS
+
+;
+; -----------------------------------------------------------
+;
+; RAM AREA - SYSTEM VARIABLES
+    BSS
+    ORG TOP_US_STACK
+INPUT   RMB     MAX_LEN ; CMD string (extend as needed, up to 256!)
+
+; Base of user memory area.
+USER_BASE               ; Start of user area (Dictionary)
