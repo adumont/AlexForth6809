@@ -14,3 +14,7 @@ Follow me in this *journal* on how I implement AlexForth for 6809:
 
 - [Day 1: Inner Interpreter and Manually Threaded code](docs/day01/README.md)
 - [Day 2: Colon defined Words and Return Stack!](docs/day02/README.md)
+
+# Requirements
+
+- 6809 Assembler [asm6809](https://www.6809.org.uk/asm6809/)
