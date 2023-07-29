@@ -69,8 +69,16 @@ do_SEMI
     PULS Y
 	NEXT
 
-h_PUSH1
+h_PUSH0
 	FDB h_SEMI
+    FCB 1, "0"
+do_PUSH0
+    LDD #$0
+    PSHU D
+	NEXT
+
+h_PUSH1
+	FDB h_PUSH0
     FCB 1, "1"
 do_PUSH1
     LDD #$01
@@ -159,8 +167,21 @@ do_LIT
     PSHU D
 	NEXT
 
-h_JUMP
+h_0BR
 	FDB h_LIT
+	FCB 3, "0BR"
+do_0BR
+    ; (IP) points to literal address to jump to if ToS is 0
+    ; instead of next word
+    LDD ,U++    ; we don't use PULU D as it doesn't set flags
+    ; if D=0 we call the code for JUMP
+    BEQ do_JUMP
+    ; else, D is not 0, leave (aka advance Y by 2 and leave (NEXT))
+    LEAY 2,Y    ; Y+2 -> Y
+    NEXT
+
+h_JUMP
+	FDB h_0BR
 	FCB 4, "JUMP"
 do_JUMP
     ; (IP) points to literal address to jump to
@@ -187,10 +208,20 @@ do_ENDLESS
 ; Small Forth Thread (program)
 FORTH_THREAD
     FDB do_PUSH1
+    FDB do_0BR
+    FDB 1F
+
     FDB do_LIT
-    FDB $1234
+    FDB $AAAA
+    FDB do_DROP
+
     FDB do_JUMP
     FDB FORTH_THREAD
+
+1   FDB do_LIT
+    FDB $BBBB
+    FDB do_DROP
+
     FDB do_ENDLESS
 
 ;
