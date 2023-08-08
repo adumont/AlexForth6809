@@ -5,7 +5,8 @@
 .DEFAULT_GOAL := run
 
 %.bin: %.s
-	asm6809 $< -8 -P 10 --bin -o $@ -l $(basename $@).lst -s $(basename $@).lbl
+	python helpers/macros.py < $< > $<.tmp && \
+	asm6809 $<.tmp -8 -P 10 --bin -o $@ -l $(basename $@).lst -s $(basename $@).lbl
 
 run: forth.bin
 	cp forth.bin ../emu6809/ && make -C ../emu6809/

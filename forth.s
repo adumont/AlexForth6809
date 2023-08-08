@@ -50,10 +50,8 @@ NEXT macro
     NEXT
 
 ; Dictionary
-h_COLON
-	FDB $0000
-	FCB 5, "COLON"
-do_COLON            ; COLON aka ENTER
+defword "COLON"
+    ; COLON aka ENTER
     ; push IP to Return Stack
     PSHS Y
 
@@ -61,53 +59,35 @@ do_COLON            ; COLON aka ENTER
     LEAY 3,Y    ; Y+3 -> Y
 	NEXT
 
-h_SEMI
-	FDB h_COLON
-	FCB 4, "SEMI"
-do_SEMI
+defword "SEMI"
     ; pull IP from Return Stack
     PULS Y
 	NEXT
 
-h_PUSH0
-	FDB h_SEMI
-    FCB 1, "0"
-do_PUSH0
+defword "PUSH0", "0"
     LDD #$0
     PSHU D
 	NEXT
 
-h_PUSH1
-	FDB h_PUSH0
-    FCB 1, "1"
-do_PUSH1
+defword "PUSH1", "1"
     LDD #$01
     PSHU D
 	NEXT
 
-h_PLUS
-	FDB h_PUSH1
-	FCB 1, "+"
-do_PLUS
+defword "PLUS", "+"
     PULU  D
     ADDD ,U
     STD  ,U
 	NEXT
 
-h_SWAP
-	FDB h_PLUS
-	FCB 4, "SWAP"
-do_SWAP
+defword "SWAP"
     LDX 2,U
     LDD  ,U
     STX  ,U
     STD 2,U
 	NEXT
 
-h_ROT
-	FDB h_SWAP
-	FCB 3, "ROT"
-do_ROT
+defword "ROT"
     LDX 4,U
 
     LDD 2,U
@@ -119,10 +99,7 @@ do_ROT
     STX  ,U
 	NEXT
 
-h_NROT
-	FDB h_ROT
-	FCB 4, "-ROT"
-do_NROT
+defword "NROT","-ROT"
     LDX  ,U
 
     LDD 2,U
@@ -134,43 +111,28 @@ do_NROT
     STX 4,U
 	NEXT
 
-h_DROP
-	FDB h_NROT
-	FCB 4, "DROP"
-do_DROP
+defword "DROP"
     LEAU 2,U
 	NEXT
 
-h_DUP
-	FDB h_DROP
-	FCB 3, "DUP"
-do_DUP
+defword "DUP"
     LDD ,U
     PSHU D
 	NEXT
 
-h_OVER
-	FDB h_DROP
-	FCB 4, "OVER"
-do_OVER
+defword "OVER"
     LDD 2,U
     PSHU D
 	NEXT
 
-h_LIT
-	FDB h_OVER
-	FCB 3, "LIT"
-do_LIT
+defword "LIT"
     ; Push a literal word (2 bytes)
     ; (IP) aka Y points to literal instead of next instruction
     LDD ,Y++
     PSHU D
 	NEXT
 
-h_0BR
-	FDB h_LIT
-	FCB 3, "0BR"
-do_0BR
+defword "0BR"
     ; (IP) points to literal address to jump to if ToS is 0
     ; instead of next word
     LDD ,U++    ; we don't use PULU D as it doesn't set flags
@@ -180,29 +142,20 @@ do_0BR
     LEAY 2,Y    ; Y+2 -> Y
     NEXT
 
-h_JUMP
-	FDB h_0BR
-	FCB 4, "JUMP"
-do_JUMP
+defword "JUMP"
     ; (IP) points to literal address to jump to
     ; instead of next word
     LDY ,Y
 	NEXT
 
 ; A test "colon word"!
-h_DOUBLE
-	FDB h_JUMP
-	FCB 6, "DOUBLE"
-do_DOUBLE
+defword "DOUBLE"
     JMP do_COLON
     FDB do_DUP
     FDB do_PLUS
     FDB do_SEMI
 
-h_ENDLESS
-	FDB h_DOUBLE
-    FCB 7, "ENDLESS"
-do_ENDLESS
+defword "ENDLESS"
     JMP *
 
 ; Small Forth Thread (program)
