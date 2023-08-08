@@ -43,7 +43,7 @@ def apply_flag_to_name(name, flags):
 
     return ', '.join([ "$%X" % c for c in a ])
 
-def process_line(line):
+def process_defword(line):
     global prev_label
 
     label, name, flags = parse_line( line )
@@ -65,6 +65,8 @@ while True:
         break
 
     if line.startswith("defword"):
-        process_line(line)
+        process_defword(line)
+    elif line.startswith("p_LATEST"):
+        print(f"p_LATEST    EQU    {prev_label}")
     else:
         print(line,end="")

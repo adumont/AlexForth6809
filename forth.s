@@ -177,6 +177,9 @@ FORTH_THREAD
 
     FDB do_ENDLESS
 
+;-----------------------------------------------------------------
+; p_LATEST point to the latest defined word (using defword macro)
+p_LATEST EQU <filled with macro>
 ;
 ; -----------------------------------------------------------
 ;
