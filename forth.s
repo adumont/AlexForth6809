@@ -7,6 +7,7 @@
 TOP_HW_STACK    EQU $0300
 TOP_US_STACK    EQU $0400
 MAX_LEN         EQU $80		; Input Buffer MAX length, $80= 128 bytes
+BKSPACE         EQU $08     ; Backspace char
 
 ; IO Addresses - Configure for your target
 IN_CHAR         EQU $F004
@@ -184,23 +185,6 @@ defword "ENDLESS"
 ; Small Forth Thread (program)
 FORTH_THREAD
     FDB do_KEY
-    FDB do_KEY
-    FDB do_KEY
-    FDB do_PUSH1
-    FDB do_0BR
-    FDB 1F
-
-    FDB do_LIT
-    FDB $AAAA
-    FDB do_DROP
-
-    FDB do_JUMP
-    FDB FORTH_THREAD
-
-1   FDB do_LIT
-    FDB $BBBB
-    FDB do_DROP
-
     FDB do_ENDLESS
 
 
@@ -228,6 +212,15 @@ getline
 1 ; @next
     JSR getc    ; get new char into B register
 
+	CMPB #BKSPACE ; Backspace, CTRL-H
+	BEQ 3f      ; @bkspace
+
+	CMPB #$7F   ; Backspace key on Linux?
+	BEQ 3f      ; @bkspace
+
+	CMPX #INPUT_BUFFER_END
+	BEQ 4f      ; @buffer_end
+
     STB ,X+     ; save char to INPUT buffer
 
     CMPB #$0A   ; \n
@@ -243,6 +236,22 @@ getline
     STX INPUT_END
     JMP _crlf
 
+3 ; @bkspace
+	CMPX #INPUT		; start of line?
+	BEQ 1b          ; @next, ie do nothing
+	LDB #BKSPACE
+	JSR putc	    ; echo char
+	LEAX -1,X	    ; else: decrease X by 1
+	BRA 1b          ; @next
+
+4 ; @buffer_end
+	TFR B, A        ; save char (B) into register A
+	LDB #BKSPACE	; send bckspace to erase last char
+	JSR putc
+	TFR A, B		; restore last char
+	STB -1,X	    ; save char to INPUT
+	JSR putc
+	BRA 1b          ; @next
 
 _crlf
 	LDB #$0a    ; CR
