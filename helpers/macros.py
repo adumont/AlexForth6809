@@ -37,10 +37,8 @@ def parse_line(line):
 
     return cleaned_args[0:3]
 
-def apply_flag_to_name(name, flags):
+def name_to_bytes(name):
     a = [ c for c in bytearray(name, 'utf-8') ]
-    a[0] = a[0] | flags
-
     return ', '.join([ "$%X" % c for c in a ])
 
 def process_defword(line):
@@ -51,8 +49,8 @@ def process_defword(line):
     print(f"""; defword "{label}", "{name}", {flags}
 h_{label}
     FDB {prev_label} ; link
-    FCB {len(name)} ; len
-    FCB {apply_flag_to_name(name, flags)} ; "{name}"
+    FCB {len(name) | flags} ; len | flags
+    FCB {name_to_bytes(name)} ; "{name}"
 do_{label}""")
 
     prev_label = f"h_{label}"
