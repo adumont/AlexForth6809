@@ -205,21 +205,8 @@ _PARSE
     BEQ 3f ; @return0        ;--> we have to exit leaving two zeros ( 0 0 ) on the stack
 
     CMPB #$0D
-    BEQ 3f ; @return0
-
-    CMPB #'\'
     BNE 5f ; @startW
-
-    ; here it's a \ comment
-2 ; @comment
-    JSR _KEY
-
-    CMPB #$0A
-    BEQ 3f      ; @return0, we have to exit leaving two zeros ( 0 0 ) on the stack
-
-    CMPB #$0D
-    BNE 2b      ; @comment
-    ; fallthrough to @return0
+    ; fallthrough into @return0
 
 3 ; @return0
 
