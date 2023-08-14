@@ -59,9 +59,9 @@ DPR	    RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next fre
 ; Y is our IP register
 ; NEXT is simply JMP [,Y++]
 
-NEXT macro
+NEXT MACRO
     JMP [,Y++]
-    endm
+    ENDM
 
 ; Enter the thread:
     LDY #FORTH_THREAD
@@ -182,11 +182,13 @@ defword "KEY"
 defword "ENDLESS"
     JMP *
 
+;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
     FDB do_KEY
     FDB do_ENDLESS
 
+;-----------------------------------------------------------------
 
 _KEY
     LDX INPUT_IDX
