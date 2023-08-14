@@ -203,6 +203,39 @@ _KEY
 1 ; @eos
     JSR getline
     BRA _KEY
+
+
+STRCMP
+; Clobbers: X, A, B
+; Input: expects the addr of 2 counted STR on the data stack
+; Output:
+; - Z flag set if both str equals
+; - Z flag cleared if not equals
+
+    PSHS Y          ; Save Y    TODO: put this outside?
+
+    PULU X,Y        ; Load both counted str addresses in X and Y
+
+    LDA  ,X+        ; Load length of X string in A
+    CMPA ,Y+
+    BNE 2f          ; @end
+
+    ; here we know both strings are the same length
+
+    TSTA            ; Are both strings empty?
+    BEQ 2f          ; @end
+
+1 ; @next
+    LDB  ,X+
+    CMPB ,Y+
+    BNE 2f          ; @end
+    DECA
+    BNE 1b          ; @next
+
+2 ; @end
+    PULS Y
+    RTS
+
 ;-----------------------------------------------------------------
 ; Input Buffer Routines
 
