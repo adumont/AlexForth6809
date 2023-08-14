@@ -6,7 +6,7 @@
 
 TOP_HW_STACK    EQU $0300
 TOP_US_STACK    EQU $0400
-MAX_LEN         EQU $80		; Input Buffer MAX length, $80= 128 bytes
+MAX_LEN         EQU $80     ; Input Buffer MAX length, $80= 128 bytes
 BKSPACE         EQU $08     ; Backspace char
 
 ; IO Addresses - Configure for your target
@@ -22,8 +22,8 @@ OU_CHAR         EQU $F001
     ORG $0000
 
 LATEST  RMB     2   ; Store the latest ADDR of the Dictionary
-DPR	    RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
-SEPR	RMB     1   ; Separator for parsing input
+DPR     RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
+SEPR    RMB     1   ; Separator for parsing input
 G1      RMB     2   ; General Purpose Register 1
 G2      RMB     2   ; General Purpose Register 2
 
@@ -76,35 +76,35 @@ defword "COLON"
 
     LDY -2,Y    ; we get W --> Y
     LEAY 3,Y    ; Y+3 -> Y
-	NEXT
+    NEXT
 
 defword "SEMI"
     ; pull IP from Return Stack
     PULS Y
-	NEXT
+    NEXT
 
 defword "PUSH0", "0"
     LDD #$0
     PSHU D
-	NEXT
+    NEXT
 
 defword "PUSH1", "1"
     LDD #$01
     PSHU D
-	NEXT
+    NEXT
 
 defword "PLUS", "+"
     PULU  D
     ADDD ,U
     STD  ,U
-	NEXT
+    NEXT
 
 defword "SWAP"
     LDX 2,U
     LDD  ,U
     STX  ,U
     STD 2,U
-	NEXT
+    NEXT
 
 defword "ROT"
     LDX 4,U
@@ -116,7 +116,7 @@ defword "ROT"
     STD 2,U
 
     STX  ,U
-	NEXT
+    NEXT
 
 defword "NROT","-ROT"
     LDX  ,U
@@ -128,28 +128,28 @@ defword "NROT","-ROT"
     STD 2,U
 
     STX 4,U
-	NEXT
+    NEXT
 
 defword "DROP"
     LEAU 2,U
-	NEXT
+    NEXT
 
 defword "DUP"
     LDD ,U
     PSHU D
-	NEXT
+    NEXT
 
 defword "OVER"
     LDD 2,U
     PSHU D
-	NEXT
+    NEXT
 
 defword "LIT"
     ; Push a literal word (2 bytes)
     ; (IP) aka Y points to literal instead of next instruction
     LDD ,Y++
     PSHU D
-	NEXT
+    NEXT
 
 defword "0BR"
     ; (IP) points to literal address to jump to if ToS is 0
@@ -165,7 +165,7 @@ defword "JUMP"
     ; (IP) points to literal address to jump to
     ; instead of next word
     LDY ,Y
-	NEXT
+    NEXT
 
 ; A test "colon word"!
 defword "DOUBLE"
@@ -321,14 +321,14 @@ getline
 1 ; @next
     JSR getc    ; get new char into B register
 
-	CMPB #BKSPACE ; Backspace, CTRL-H
-	BEQ 3f      ; @bkspace
+    CMPB #BKSPACE ; Backspace, CTRL-H
+    BEQ 3f      ; @bkspace
 
-	CMPB #$7F   ; Backspace key on Linux?
-	BEQ 3f      ; @bkspace
+    CMPB #$7F   ; Backspace key on Linux?
+    BEQ 3f      ; @bkspace
 
-	CMPX #INPUT_BUFFER_END
-	BEQ 4f      ; @buffer_end
+    CMPX #INPUT_BUFFER_END
+    BEQ 4f      ; @buffer_end
 
     STB ,X+     ; save char to INPUT buffer
 
@@ -346,27 +346,27 @@ getline
     JMP _crlf
 
 3 ; @bkspace
-	CMPX #INPUT		; start of line?
-	BEQ 1b          ; @next, ie do nothing
-	LDB #BKSPACE
-	JSR putc	    ; echo char
-	LEAX -1,X	    ; else: decrease X by 1
-	BRA 1b          ; @next
+    CMPX #INPUT     ; start of line?
+    BEQ 1b          ; @next, ie do nothing
+    LDB #BKSPACE
+    JSR putc        ; echo char
+    LEAX -1,X       ; else: decrease X by 1
+    BRA 1b          ; @next
 
 4 ; @buffer_end
-	TFR B, A        ; save char (B) into register A
-	LDB #BKSPACE	; send bckspace to erase last char
-	JSR putc
-	TFR A, B		; restore last char
-	STB -1,X	    ; save char to INPUT
-	JSR putc
-	BRA 1b          ; @next
+    TFR B, A        ; save char (B) into register A
+    LDB #BKSPACE    ; send bckspace to erase last char
+    JSR putc
+    TFR A, B        ; restore last char
+    STB -1,X        ; save char to INPUT
+    JSR putc
+    BRA 1b          ; @next
 
 _crlf
-	LDB #$0a    ; CR
-	JSR putc
-	LDB #$0d    ; LF
-	JMP putc    ; will also to RTS
+    LDB #$0a    ; CR
+    JSR putc
+    LDB #$0d    ; LF
+    JMP putc    ; will also to RTS
 
 ;-----------------------------------------------------------------
 ; IO Routines
