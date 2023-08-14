@@ -22,9 +22,10 @@ OU_CHAR         EQU $F001
     ORG $0000
 
 LATEST  RMB     2   ; Store the latest ADDR of the Dictionary
+DPR	    RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
+SEPR	RMB     1   ; Separator for parsing input
 G1      RMB     2   ; General Purpose Register 1
 G2      RMB     2   ; General Purpose Register 2
-DPR	    RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
 
 ;
 ; -----------------------------------------------------------
@@ -182,6 +183,95 @@ defword "KEY"
 defword "ENDLESS"
     JMP *
 
+defword "WORD"
+    LDB #$20        ; space separator
+    BRA _PARSE
+
+defword "PARSE"
+; parse input buffer with separator SEPR (and advance INP_IDX)
+; ( SEP -- ADDR LEN )
+
+    PULU D          ; separator char is in B
+_PARSE
+    STB SEPR        ; we store the separator in SEPR
+
+1 ; @skip
+    JSR _KEY
+
+    CMPB SEPR
+    BEQ 1b          ; @skip
+
+    CMPB #$0A
+    BEQ 3f ; @return0        ;--> we have to exit leaving two zeros ( 0 0 ) on the stack
+
+    CMPB #$0D
+    BEQ 3f ; @return0
+
+    CMPB #'\'
+    BNE 5f ; @startW
+
+    ; here it's a \ comment
+2 ; @comment
+    JSR _KEY
+
+    CMPB #$0A
+    BEQ 3f      ; @return0, we have to exit leaving two zeros ( 0 0 ) on the stack
+
+    CMPB #$0D
+    BNE 2b      ; @comment
+    ; fallthrough to @return0
+
+3 ; @return0
+
+;    lda BOOT
+;    bne 4f        ; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+;    inc OK        ; we mark 1 the OK flag
+; 4 ;
+
+    LDD #0      ; we reset D to 0
+    TFR D,X     ; we reset X to 0 too
+    PSHU D,X    ; we push both zeros in one instruction
+    NEXT        ; exit PARSE leaving 2 zeros on the stack
+
+; start of word
+5 ; @startW:
+    ; First we store the ADDR on stack
+
+    ; exiting _KEY X is the next char, so X-1 is the starting addr of our word
+    LEAX -1,X
+    PSHU X      ; We push the ADDR to ToS
+
+    LDA #1      ; we initialize A to 1, to count chars in WORD
+
+6 ; @next2:
+    JSR _KEY
+
+    CMPB SEPR
+    BEQ 8f      ; @endW
+
+    CMPB #$0A
+    BEQ 7f      ; @return
+
+    CMPB #$0D
+    BEQ 7f      ; @return
+
+    INCA
+    BRA 6b      ; @next2
+
+7 ; @return
+
+;    lda BOOT
+;    bne @endW    ; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+;    inc OK        ; we mark 1 the OK flag
+
+8 ; @endW
+    ; compute length
+
+    TFR A,B     ; length is in A, we transfer it to B
+    LDA #0      ; and reset A to 0
+    PSHU D      ; finally we push the length to the stack
+    NEXT
+
 ;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
@@ -191,6 +281,7 @@ FORTH_THREAD
 ;-----------------------------------------------------------------
 
 _KEY
+; Returns with the next char from input buffer in register B
     LDX INPUT_IDX
 
     CMPX INPUT_END  ; reached end of input string?
