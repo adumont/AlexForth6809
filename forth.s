@@ -206,15 +206,12 @@ _KEY
 
 
 STRCMP
-; Clobbers: X, A, B
-; Input: expects the addr of 2 counted STR on the data stack
+; Clobbers: X, Y, A, B
+; Housekeeping: Save Y (IP) before calling STRCMP and restore it after calling STRCMP
+; Input: expects the addr of 2 counted STR in X and Y
 ; Output:
 ; - Z flag set if both str equals
 ; - Z flag cleared if not equals
-
-    PSHS Y          ; Save Y    TODO: put this outside?
-
-    PULU X,Y        ; Load both counted str addresses in X and Y
 
     LDA  ,X+        ; Load length of X string in A
     CMPA ,Y+
@@ -233,7 +230,6 @@ STRCMP
     BNE 1b          ; @next
 
 2 ; @end
-    PULS Y
     RTS
 
 ;-----------------------------------------------------------------
