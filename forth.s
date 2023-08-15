@@ -310,6 +310,36 @@ STRCMP
 2 ; @end
     RTS
 
+
+nibble_asc_to_value
+; converts a char representing a hex-digit (nibble)
+; into the corresponding hex value
+; - Input : char asc is in B (ex. 34)
+; - Output: number is in B  (ex. 04)
+
+; boundary check is it a digit?
+    CMPB #'0'
+    BMI 1f      ; @err
+    CMPB #'F'+1
+    BPL 1f      ; @err
+    CMPB #'9'+1
+    BMI 2f      ; @conv
+    CMPB #'A'
+    BPL 2f      ; @conv
+1 ; @err:
+    ; nibble wasn't valid, error
+    ORCC #1     ; set carry flag
+    RTS
+2 ; @conv:
+    ; conversion happens here
+    CMPB #$41
+    BMI 3f      ; @less
+    SBCB #$37
+3 ; @less:
+    ANDB #$0F
+    ANDCC #$FE  ; clear carry flag
+    RTS
+
 ;-----------------------------------------------------------------
 ; Input Buffer Routines
 
