@@ -167,6 +167,11 @@ defword "JUMP"
     LDY ,Y
     NEXT
 
+defword "EXEC"
+    ; ( ADDR -- )
+    ; JMP to addr on the stack, single instr on the 6809
+    PULU PC
+
 ; A test "colon word"!
 defword "DOUBLE"
     JMP do_COLON
