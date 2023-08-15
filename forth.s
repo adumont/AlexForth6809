@@ -232,6 +232,23 @@ defword "GETC"
     PSHU D
     NEXT
 
+defword "PRINT", "."
+; Print data on top of stack (in hex for now)
+; ( cell -- )
+    LDB  ,U
+    JSR print_byte
+    BRA do_CPRINT    ; jump over CPRINT's header and continue in CPRINT
+
+defword "CPRINT", "C.",
+; Print data on top of stack (in hex for now)
+; ( byte -- )
+    LDB 1,U
+    JSR print_byte
+    LDB #' '
+    JSR putc
+    LEAU 2,U       ; DROP
+    NEXT
+
 defword "KEY"
     JSR _KEY
     LDA #$0
