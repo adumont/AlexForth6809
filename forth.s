@@ -174,6 +174,20 @@ defword "DOUBLE"
     FDB do_PLUS
     FDB do_SEMI
 
+defword "EMIT"
+; EMIT emit a single char
+    ; char is on stack
+    PULU D
+    JSR putc
+    NEXT
+
+defword "GETC"
+; get a single char from IO, leave on stack
+    LDA #0
+    JSR getc ; leaves the char in B
+    PSHU D
+    NEXT
+
 defword "KEY"
     JSR _KEY
     LDA #$0
