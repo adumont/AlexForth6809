@@ -340,6 +340,29 @@ nibble_asc_to_value
     ANDCC #$FE  ; clear carry flag
     RTS
 
+print_byte
+; Input: a byte to print is in B
+; Clobbers A
+	TFR  B,A    ; saves B to A
+	LSRB	    ; here we shift right
+	LSRB	    ; to get B's HI nibble
+	LSRB
+	LSRB
+	JSR print_nibble
+
+	TFR  A,B    ; restores B
+	ANDB #$0F   ; keep LO nibble
+	; fallthrough to print_nibble
+
+print_nibble
+; Input: nibble to print is in B
+	CMPB #$0A
+	BCS  1f
+	ADDB #$67
+1
+	EORB  #$30
+	JMP  putc
+
 ;-----------------------------------------------------------------
 ; Input Buffer Routines
 
