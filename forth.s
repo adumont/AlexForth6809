@@ -172,6 +172,45 @@ defword "EXEC"
     ; JMP to addr on the stack, single instr on the 6809
     PULU PC
 
+defword "FETCH","@",
+; @ ( ADDR -- value )
+; We read the data at the address on the
+; stack and put the value on the stack
+    ; load addr on ToS into X
+    PULU X
+    ; Read data at ,X and save on ToS
+    LDD ,X
+    PSHU D
+    NEXT
+
+defword "CFETCH","C@",
+; C@ ( ADDR -- byte )
+; We read 1 byte at the address on the
+; stack and put the value on the stack
+    ; load addr on ToS into X
+    PULU X
+    ; Read data at ,X and save on ToS
+    LDA #0
+    LDB ,X
+    PSHU D
+    NEXT
+
+defword "STORE","!",
+; ! ( value ADDR -- )
+; Stores value at ADDR
+    PULU X
+    PULU D
+    STD ,X
+    NEXT
+
+defword "CSTORE","C!",
+; C! ( byte ADDR -- )
+; Stores value at ADDR
+    PULU X
+    PULU D      ; we pull 2 bytes (1 cell)
+    STB ,X      ; but only store B (1 byte)
+    NEXT
+
 ; A test "colon word"!
 defword "DOUBLE"
     JMP do_COLON
