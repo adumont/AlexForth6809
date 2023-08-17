@@ -23,7 +23,7 @@ def parse_line(line):
         if len(s)==0:
             s = None
         elif len(s)>=2:
-            if s[0] == s[-1] == '"' or s[0] == s[-1] == '"' :
+            if s[0] == s[-1] == '"' or s[0] == s[-1] == "'" :
                 s=s[1:-1]
         cleaned_args.append(s)
 
