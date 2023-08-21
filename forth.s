@@ -144,6 +144,26 @@ defword "OVER"
     PSHU D
     NEXT
 
+defword "HERE"
+; : HERE	DP @ ;
+; Primitive version
+    LDD DPR
+    PSHU D
+    NEXT
+
+defword "LATEST"
+; Simply returns the address of the label LATEST
+    LDD #LATEST
+    PSHU D
+    NEXT
+
+defword "LAST"
+; ( -- ADDR ) returns header addr of last word in dict
+; equivalent to : LAST LATEST @ ;
+    LDD LATEST
+    PSHU D
+    NEXT
+
 defword "LIT"
     ; Push a literal word (2 bytes)
     ; (IP) aka Y points to literal instead of next instruction
@@ -337,7 +357,7 @@ _PARSE
 ;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
-    FDB do_KEY
+    FDB do_LAST
     FDB do_ENDLESS
 
 ;-----------------------------------------------------------------
