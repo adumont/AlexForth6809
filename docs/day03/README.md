@@ -6,7 +6,7 @@ In this exciting journey into building a FORTH language from scratch, today we'l
 
 ## Automatic headers generation
 
-So far, we've been writing *manually* the headers of eacho of our FORTH words, for example:
+So far, we've been writing *manually* the headers of each of our FORTH words, for example:
 
 ```
 h_PLUS
