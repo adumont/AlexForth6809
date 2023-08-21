@@ -14,6 +14,7 @@ Follow me in this *journal* on how I implement AlexForth for 6809:
 
 - [Day 1: Inner Interpreter and Manually Threaded code](docs/day01/README.md)
 - [Day 2: Colon defined Words and Return Stack!](docs/day02/README.md)
+- [Day 3: Automating words headers, embedding constants into words definitions and memory manipulation words](docs/day03/README.md)
 
 # Requirements
 
