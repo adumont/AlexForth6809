@@ -23,6 +23,7 @@ OU_CHAR         EQU $F001
 
 LATEST  RMB     2   ; Store the latest ADDR of the Dictionary
 DPR     RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
+MODE    RMB     1   ; Compilation Mode: <>0 Execute, 0 compile
 SEPR    RMB     1   ; Separator for parsing input
 G1      RMB     2   ; General Purpose Register 1
 G2      RMB     2   ; General Purpose Register 2
@@ -37,6 +38,10 @@ G2      RMB     2   ; General Purpose Register 2
 
     CLRA
     TFR A, DP
+
+    INCA                ; A <- 1
+    STA MODE            ; MODE=1 (Execute)
+
     LDU #TOP_US_STACK   ; User stack will be at 03xx (0400 downwards)
     LDS #TOP_HW_STACK   ; Hardware/CPU stack is in 2 pages 01xx-02xx (0300 downwards)
     LDX #USER_BASE
@@ -148,6 +153,16 @@ defword "HERE"
 ; : HERE	DP @ ;
 ; Primitive version
     LDD DPR
+    PSHU D
+    NEXT
+
+defword "STATE","?EXEC"
+; Renamed as ?EXEC as it's 1 if EXEC mode
+; Is it immediate/execution mode?
+; returns the value of variable MODE
+; 0 : Compilation mode, <>0 : Execution mode
+	CLRA
+    LDB MODE
     PSHU D
     NEXT
 
@@ -371,6 +386,7 @@ _PARSE
 ;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
+    FDB do_STATE
     FDB do_LIT, $1234, do_COMMA
     FDB do_LIT, $56, do_CCOMMA
     FDB do_LIT, $78, do_CCOMMA
