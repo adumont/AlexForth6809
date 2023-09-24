@@ -283,8 +283,8 @@ defword "WORD"
     BRA _PARSE
 
 defword "PARSE"
-; parse input buffer with separator SEPR (and advance INP_IDX)
-; ( SEP -- ADDR LEN )
+; parse input buffer with separator SEPR
+; ( SEPR -- ADDR LEN )
 
     PULU D          ; separator char is in B
 _PARSE
