@@ -1,4 +1,5 @@
 import sys
+from pyparsing import *
 
 def strtoint(s):
     if s is None:
@@ -13,29 +14,21 @@ def strtoint(s):
         return int(s)
 
 def parse_line(line):
-    # returns: label, name, flags
-    cleaned_args = []
+    # label, name, flags = None, None, None
+    flags_pattern = Or([
+        common.integer,
+        Combine("$" + Word(alphanums)),
+        Combine("0x" + Word(alphanums)),
+        Combine("%" +OneOrMore(one_of("0 1"))),
+    ])
+    pattern = "defword" + quoted_string + Opt(","+Opt(quoted_string, default=None)+Opt(","+Opt(flags_pattern,default=None),default=","))
+    res = pattern.parse_string(line)
 
-    line = line.replace("defword ", "")
+    label=res[1][1:-1] if len(res)>=2 else None
+    name=res[3][1:-1]  if len(res)>=4 else label
+    flags = res[5]     if len(res)>=6 else None
 
-    for s in line.split(','):
-        s = s.strip()
-        if len(s)==0:
-            s = None
-        elif len(s)>=2:
-            if s[0] == s[-1] == '"' or s[0] == s[-1] == "'" :
-                s=s[1:-1]
-        cleaned_args.append(s)
-
-    cleaned_args.append(None)
-    cleaned_args.append(None)
-
-    if cleaned_args[1] is None:
-        cleaned_args[1] = cleaned_args[0]
-
-    cleaned_args[2] = strtoint(cleaned_args[2])
-
-    return cleaned_args[0:3]
+    return label, name, strtoint(flags)
 
 def name_to_bytes(name):
     a = [ c for c in bytearray(name, 'utf-8') ]
