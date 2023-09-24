@@ -151,6 +151,20 @@ defword "HERE"
     PSHU D
     NEXT
 
+defword "COMMA", ","
+    LDX DPR
+    PULU D
+    STD ,X++
+    STX DPR
+    NEXT
+
+defword "CCOMMA", "C,"
+    LDX DPR
+    PULU D
+    STB ,X+
+    STX DPR
+    NEXT
+
 defword "LATEST"
 ; Simply returns the address of the label LATEST
     LDD #LATEST
@@ -357,7 +371,9 @@ _PARSE
 ;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
-    FDB do_LAST
+    FDB do_LIT, $1234, do_COMMA
+    FDB do_LIT, $56, do_CCOMMA
+    FDB do_LIT, $78, do_CCOMMA
     FDB do_ENDLESS
 
 ;-----------------------------------------------------------------
