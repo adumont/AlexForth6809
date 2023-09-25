@@ -13,6 +13,10 @@ BKSPACE         EQU $08     ; Backspace char
 IN_CHAR         EQU $F004
 OU_CHAR         EQU $F001
 
+; Flags for words
+IMMEDIATE_FLAG  EQU $80
+HIDDEN_FLAG     EQU $40
+
 ;
 ; -----------------------------------------------------------
 ;
@@ -386,8 +390,9 @@ _PARSE
 ;-----------------------------------------------------------------
 ; Small Forth Thread (program)
 FORTH_THREAD
-    FDB do_STATE
-    FDB do_LIT, $1234, do_COMMA
+    FDB do_LIT, h_WORD+3
+    FDB do_LIT, $4
+    FDB do_FIND
     FDB do_LIT, $56, do_CCOMMA
     FDB do_LIT, $78, do_CCOMMA
     FDB do_ENDLESS
@@ -409,20 +414,79 @@ _KEY
     JSR getline
     BRA _KEY
 
+defword "FIND"
+; ( ADDRi LEN -- ADDRo )
+; ADDRi: Address of a string
+; LEN: Length of the string (LO byte only)
+; ADDRo: Address of the header if Found
+; or 0000 if not found
+
+    LDX 2,U         ; X is the addr of the string we're looking for 
+    LDA 1,U         ; length of the string we're looking for
+    STA G1          ; need to save to mem so we can compare with B later on (6309 has a compare A and B instr)
+
+    LEAU 4,U        ; 2DROP
+    PSHS X,Y,U      ; We save X, Y and U on the S stack
+
+    LDU LATEST
+
+1 ; @nxt_word
+    ; U points to the header of a word in the dictionary
+    ; 2,U is the length field (possibly ORed with flags)
+    ; 3,U is the start of the name field
+
+    LDB  2,U
+    BITB #HIDDEN_FLAG
+    BNE 2f ; @advance_w	; Hidden word! skip it
+
+    ANDB #$1F       ; remove flags (3 MSB)
+    CMPB G1
+
+    BEQ 4f ; @same_length
+    ; not same length, advance to next word
+
+2 ; @advance_w
+    ; move on to the next word in the dictionary
+    LDU ,U
+    BNE 1b ; @nxt_word
+
+3 ; @not_found
+    ; here U=0, we've reached the end of the dictionary
+    ; we put 00 on stack and exit
+    CLRA
+    CLRB
+    BRA 6f ; @end
+
+4 ; @same_length:
+    ; same length: compare str
+    LDX  0,S            ; reload X with value saved on the S stack earlier
+    LEAY 3,U            ; load Y (points to the name in the word's header)
+    JSR STRCMP
+    BNE 2b ; @advance_w
+
+5 ; @found:             ; ADDR is U -> TOS
+	TFR U,D
+
+6 ; @end
+    PULS X,Y,U          ; Restore Y and U (also X but we don't care)
+    PSHU D
+    NEXT
+
 
 STRCMP
+; Compares two strings of same length (in A).
+; Strings are at addr X and Y
 ; Clobbers: X, Y, A, B
 ; Housekeeping: Save Y (IP) before calling STRCMP and restore it after calling STRCMP
-; Input: expects the addr of 2 counted STR in X and Y
 ; Output:
 ; - Z flag set if both str equals
 ; - Z flag cleared if not equals
 
-    LDA  ,X+        ; Load length of X string in A
-    CMPA ,Y+
-    BNE 2f          ; @end
+;    LDA  ,X+        ; Load length of X string in A
+;    CMPA ,Y+
+;    BNE 2f          ; @end
 
-    ; here we know both strings are the same length
+;    ; here we know both strings are the same length
 
     TSTA            ; Are both strings empty?
     BEQ 2f          ; @end
