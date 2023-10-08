@@ -93,7 +93,8 @@ defword "SEMI"
     NEXT
 
 defword "PUSH0", "0"
-    LDD #$0
+    CLRA
+    CLRB
     PSHU D
     NEXT
 
@@ -243,7 +244,7 @@ defword "CFETCH","C@",
     ; load addr on ToS into X
     PULU X
     ; Read data at ,X and save on ToS
-    LDA #0
+    CLRA
     LDB ,X
     PSHU D
     NEXT
@@ -280,7 +281,7 @@ defword "EMIT"
 
 defword "GETC"
 ; get a single char from IO, leave on stack
-    LDA #0
+    CLRA
     JSR getc ; leaves the char in B
     PSHU D
     NEXT
@@ -304,7 +305,7 @@ defword "CPRINT", "C.",
 
 defword "KEY"
     JSR _KEY
-    LDA #$0
+    CLRA
     PSHU D
     NEXT
 
@@ -343,7 +344,8 @@ _PARSE
 ;    inc OK        ; we mark 1 the OK flag
 ; 4 ;
 
-    LDD #0      ; we reset D to 0
+    CLRA
+    CLRB        ; we reset D to 0
     TFR D,X     ; we reset X to 0 too
     PSHU D,X    ; we push both zeros in one instruction
     NEXT        ; exit PARSE leaving 2 zeros on the stack
@@ -383,7 +385,7 @@ _PARSE
     ; compute length
 
     TFR A,B     ; length is in A, we transfer it to B
-    LDA #0      ; and reset A to 0
+    CLRA        ; and reset A to 0
     PSHU D      ; finally we push the length to the stack
     NEXT
 
