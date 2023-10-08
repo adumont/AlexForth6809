@@ -77,6 +77,18 @@ NEXT MACRO
     LDY #FORTH_THREAD
     NEXT
 
+;-----------------------------------------------------------------
+; Small Forth Thread (program)
+FORTH_THREAD
+    FDB do_LIT, h_WORD+3
+    FDB do_LIT, $4
+    FDB do_FIND
+    FDB do_LIT, $56, do_CCOMMA
+    FDB do_LIT, $78, do_CCOMMA
+    FDB do_ENDLESS
+
+;-----------------------------------------------------------------
+
 ; Dictionary
 defword "COLON"
     ; COLON aka ENTER
@@ -389,18 +401,6 @@ _PARSE
     PSHU D      ; finally we push the length to the stack
     NEXT
 
-;-----------------------------------------------------------------
-; Small Forth Thread (program)
-FORTH_THREAD
-    FDB do_LIT, h_WORD+3
-    FDB do_LIT, $4
-    FDB do_FIND
-    FDB do_LIT, $56, do_CCOMMA
-    FDB do_LIT, $78, do_CCOMMA
-    FDB do_ENDLESS
-
-;-----------------------------------------------------------------
-
 _KEY
 ; Returns with the next char from input buffer in register B
     LDX INPUT_IDX
@@ -423,7 +423,7 @@ defword "FIND"
 ; ADDRo: Address of the header if Found
 ; or 0000 if not found
 
-    LDX 2,U         ; X is the addr of the string we're looking for 
+    LDX 2,U         ; X is the addr of the string we're looking for
     LDA 1,U         ; length of the string we're looking for
     STA G1          ; need to save to mem so we can compare with B later on (6309 has a compare A and B instr)
 
