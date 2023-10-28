@@ -618,11 +618,13 @@ _crlf
 ; IO Routines
 
 getc
+    ; load a char from input into B
     LDB IN_CHAR
     BEQ getc
     RTS
 
 putc
+    ; send char in B to output
     STB OU_CHAR
     RTS
 
