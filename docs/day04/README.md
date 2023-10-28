@@ -119,7 +119,7 @@ We can visualize the full process in a sequence diagram:
 
 ![](assets/do_PRINT.png)
 
-# Recap
+## Recap
 
 This article focuses on implementing some routines to handle user I/O in AlexFORTH:
 
