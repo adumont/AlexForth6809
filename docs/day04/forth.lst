@@ -1,0 +1,699 @@
+                      ; AlexForth for 6809
+                      ; Copyright (C) 2023 Alexandre Dumont <adumont@gmail.com>
+                      ; SPDX-License-Identifier: GPL-3.0-only
+                      ;
+                      ; Target CPU is Motorola 6809
+                      
+0300                  TOP_HW_STACK    EQU $0300
+0400                  TOP_US_STACK    EQU $0400
+0080                  MAX_LEN         EQU $80     ; Input Buffer MAX length, $80= 128 bytes
+0008                  BKSPACE         EQU $08     ; Backspace char
+                      
+                      ; IO Addresses - Configure for your target
+F004                  IN_CHAR         EQU $F004
+F001                  OU_CHAR         EQU $F001
+                      
+                      ; Flags for words
+0080                  IMMEDIATE_FLAG  EQU $80
+0040                  HIDDEN_FLAG     EQU $40
+                      
+                      ;
+                      ; -----------------------------------------------------------
+                      ;
+                      ; RAM AREA - SYSTEM VARIABLES in Direct Page (fast access)
+                      
+829F                      BSS
+0000                      ORG $0000
+                      
+0000                  LATEST  RMB     2   ; Store the latest ADDR of the Dictionary
+0002                  DPR     RMB     2   ; Data/Dictionary Pointer: Store the latest ADDR of next free space in RAM (HERE)
+0004                  MODE    RMB     1   ; Compilation Mode: <>0 Execute, 0 compile
+0005                  SEPR    RMB     1   ; Separator for parsing input
+0006                  G1      RMB     2   ; General Purpose Register 1
+0008                  G2      RMB     2   ; General Purpose Register 2
+                      
+                      ;
+                      ; -----------------------------------------------------------
+                      ;
+0000                      CODE
+                      
+8000                      ORG $8000
+8000                      SETDP $00           ; instructs assembler that our Direct Page is $00xx
+                      
+8000  4F                  CLRA
+8001  1F8B                TFR A, DP
+                      
+8003  4C                  INCA                ; A <- 1
+8004  9704                STA MODE            ; MODE=1 (Execute)
+                      
+8006  CE0400              LDU #TOP_US_STACK   ; User stack will be at 03xx (0400 downwards)
+8009  10CE0300            LDS #TOP_HW_STACK   ; Hardware/CPU stack is in 2 pages 01xx-02xx (0300 downwards)
+800D  8E0486              LDX #USER_BASE
+8010  9F02                STX DPR             ; initialize Dictionary Pointer
+                      
+                          ; Initialize INPUT_BUFFER_END
+8012  8E0480              LDX #INPUT_BUFFER_END
+8015  BF0480              STX INPUT_BUFFER_END
+                      
+                          ; Input buffer starts empty
+8018  8E0400              LDX #INPUT
+801B  BF0482              STX INPUT_END
+                      
+                          ; Position into the INPUT buffer set to start of buffer for now
+801E  8E0400              LDX #INPUT
+8021  BF0484              STX INPUT_IDX
+                      
+                      ; Y is our IP register
+                      ; NEXT is simply JMP [,Y++]
+                      
+                      NEXT MACRO
+                          JMP [,Y++]
+                          ENDM
+                      
+                      ; Enter the thread:
+8024  108E802A            LDY #FORTH_THREAD
+8028                      NEXT
+8028  6EB1                JMP [,Y++]
+                      
+                      ;-----------------------------------------------------------------
+                      ; Small Forth Thread (program)
+802A                  FORTH_THREAD
+802A  81C7                FDB do_ENDLESS
+                      
+                      ;-----------------------------------------------------------------
+                      
+                      ; Dictionary
+                      ; defword "COLON", "COLON", 0
+802C                  h_COLON
+802C  0000                FDB 0 ; link
+802E  05                  FCB 5 ; len | flags
+802F  434F4C4F4E          FCB $43, $4F, $4C, $4F, $4E ; "COLON"
+8034                  do_COLON
+                          ; COLON aka ENTER
+                          ; push IP to Return Stack
+8034  3420                PSHS Y
+                      
+8036  10AE3E              LDY -2,Y    ; we get W --> Y
+8039  3123                LEAY 3,Y    ; Y+3 -> Y
+803B                      NEXT
+803B  6EB1                JMP [,Y++]
+                      
+                      ; defword "SEMI", "SEMI", 0
+803D                  h_SEMI
+803D  802C                FDB h_COLON ; link
+803F  04                  FCB 4 ; len | flags
+8040  53454D49            FCB $53, $45, $4D, $49 ; "SEMI"
+8044                  do_SEMI
+                          ; pull IP from Return Stack
+8044  3520                PULS Y
+8046                      NEXT
+8046  6EB1                JMP [,Y++]
+                      
+                      ; defword "PUSH0", "0", 0
+8048                  h_PUSH0
+8048  803D                FDB h_SEMI ; link
+804A  01                  FCB 1 ; len | flags
+804B  30                  FCB $30 ; "0"
+804C                  do_PUSH0
+804C  4F                  CLRA
+804D  5F                  CLRB
+804E  3606                PSHU D
+8050                      NEXT
+8050  6EB1                JMP [,Y++]
+                      
+                      ; defword "PUSH1", "1", 0
+8052                  h_PUSH1
+8052  8048                FDB h_PUSH0 ; link
+8054  01                  FCB 1 ; len | flags
+8055  31                  FCB $31 ; "1"
+8056                  do_PUSH1
+8056  CC0001              LDD #$01
+8059  3606                PSHU D
+805B                      NEXT
+805B  6EB1                JMP [,Y++]
+                      
+                      ; defword "PLUS", "+", 0
+805D                  h_PLUS
+805D  8052                FDB h_PUSH1 ; link
+805F  01                  FCB 1 ; len | flags
+8060  2B                  FCB $2B ; "+"
+8061                  do_PLUS
+8061  3706                PULU  D
+8063  E3C4                ADDD ,U
+8065  EDC4                STD  ,U
+8067                      NEXT
+8067  6EB1                JMP [,Y++]
+                      
+                      ; defword "SWAP", "SWAP", 0
+8069                  h_SWAP
+8069  805D                FDB h_PLUS ; link
+806B  04                  FCB 4 ; len | flags
+806C  53574150            FCB $53, $57, $41, $50 ; "SWAP"
+8070                  do_SWAP
+8070  AE42                LDX 2,U
+8072  ECC4                LDD  ,U
+8074  AFC4                STX  ,U
+8076  ED42                STD 2,U
+8078                      NEXT
+8078  6EB1                JMP [,Y++]
+                      
+                      ; defword "ROT", "ROT", 0
+807A                  h_ROT
+807A  8069                FDB h_SWAP ; link
+807C  03                  FCB 3 ; len | flags
+807D  524F54              FCB $52, $4F, $54 ; "ROT"
+8080                  do_ROT
+8080  AE44                LDX 4,U
+                      
+8082  EC42                LDD 2,U
+8084  ED44                STD 4,U
+                      
+8086  ECC4                LDD  ,U
+8088  ED42                STD 2,U
+                      
+808A  AFC4                STX  ,U
+808C                      NEXT
+808C  6EB1                JMP [,Y++]
+                      
+                      ; defword "NROT", "-ROT", 0
+808E                  h_NROT
+808E  807A                FDB h_ROT ; link
+8090  04                  FCB 4 ; len | flags
+8091  2D524F54            FCB $2D, $52, $4F, $54 ; "-ROT"
+8095                  do_NROT
+8095  AEC4                LDX  ,U
+                      
+8097  EC42                LDD 2,U
+8099  EDC4                STD  ,U
+                      
+809B  EC44                LDD 4,U
+809D  ED42                STD 2,U
+                      
+809F  AF44                STX 4,U
+80A1                      NEXT
+80A1  6EB1                JMP [,Y++]
+                      
+                      ; defword "DROP", "DROP", 0
+80A3                  h_DROP
+80A3  808E                FDB h_NROT ; link
+80A5  04                  FCB 4 ; len | flags
+80A6  44524F50            FCB $44, $52, $4F, $50 ; "DROP"
+80AA                  do_DROP
+80AA  3342                LEAU 2,U
+80AC                      NEXT
+80AC  6EB1                JMP [,Y++]
+                      
+                      ; defword "DUP", "DUP", 0
+80AE                  h_DUP
+80AE  80A3                FDB h_DROP ; link
+80B0  03                  FCB 3 ; len | flags
+80B1  445550              FCB $44, $55, $50 ; "DUP"
+80B4                  do_DUP
+80B4  ECC4                LDD ,U
+80B6  3606                PSHU D
+80B8                      NEXT
+80B8  6EB1                JMP [,Y++]
+                      
+                      ; defword "OVER", "OVER", 0
+80BA                  h_OVER
+80BA  80AE                FDB h_DUP ; link
+80BC  04                  FCB 4 ; len | flags
+80BD  4F564552            FCB $4F, $56, $45, $52 ; "OVER"
+80C1                  do_OVER
+80C1  EC42                LDD 2,U
+80C3  3606                PSHU D
+80C5                      NEXT
+80C5  6EB1                JMP [,Y++]
+                      
+                      ; defword "HERE", "HERE", 0
+80C7                  h_HERE
+80C7  80BA                FDB h_OVER ; link
+80C9  04                  FCB 4 ; len | flags
+80CA  48455245            FCB $48, $45, $52, $45 ; "HERE"
+80CE                  do_HERE
+                      ; : HERE        DP @ ;
+                      ; Primitive version
+80CE  DC02                LDD DPR
+80D0  3606                PSHU D
+80D2                      NEXT
+80D2  6EB1                JMP [,Y++]
+                      
+                      ; defword "STATE", "?EXEC", 0
+80D4                  h_STATE
+80D4  80C7                FDB h_HERE ; link
+80D6  05                  FCB 5 ; len | flags
+80D7  3F45584543          FCB $3F, $45, $58, $45, $43 ; "?EXEC"
+80DC                  do_STATE
+                      ; Renamed as ?EXEC as it's 1 if EXEC mode
+                      ; Is it immediate/execution mode?
+                      ; returns the value of variable MODE
+                      ; 0 : Compilation mode, <>0 : Execution mode
+80DC  4F                      CLRA
+80DD  D604                LDB MODE
+80DF  3606                PSHU D
+80E1                      NEXT
+80E1  6EB1                JMP [,Y++]
+                      
+                      ; defword "COMMA", ",", 0
+80E3                  h_COMMA
+80E3  80D4                FDB h_STATE ; link
+80E5  01                  FCB 1 ; len | flags
+80E6  2C                  FCB $2C ; ","
+80E7                  do_COMMA
+80E7  9E02                LDX DPR
+80E9  3706                PULU D
+80EB  ED81                STD ,X++
+80ED  9F02                STX DPR
+80EF                      NEXT
+80EF  6EB1                JMP [,Y++]
+                      
+                      ; defword "CCOMMA", "C,", 0
+80F1                  h_CCOMMA
+80F1  80E3                FDB h_COMMA ; link
+80F3  02                  FCB 2 ; len | flags
+80F4  432C                FCB $43, $2C ; "C,"
+80F6                  do_CCOMMA
+80F6  9E02                LDX DPR
+80F8  3706                PULU D
+80FA  E780                STB ,X+
+80FC  9F02                STX DPR
+80FE                      NEXT
+80FE  6EB1                JMP [,Y++]
+                      
+                      ; defword "LIT", "LIT", 0
+8100                  h_LIT
+8100  80F1                FDB h_CCOMMA ; link
+8102  03                  FCB 3 ; len | flags
+8103  4C4954              FCB $4C, $49, $54 ; "LIT"
+8106                  do_LIT
+                          ; Push a literal word (2 bytes)
+                          ; (IP) aka Y points to literal instead of next instruction
+8106  ECA1                LDD ,Y++
+8108  3606                PSHU D
+810A                      NEXT
+810A  6EB1                JMP [,Y++]
+                      
+                      ; defword "0BR", "0BR", 0
+810C                  h_0BR
+810C  8100                FDB h_LIT ; link
+810E  03                  FCB 3 ; len | flags
+810F  304252              FCB $30, $42, $52 ; "0BR"
+8112                  do_0BR
+                          ; (IP) points to literal address to jump to if ToS is 0
+                          ; instead of next word
+8112  ECC1                LDD ,U++    ; we don't use PULU D as it doesn't set flags
+                          ; if D=0 we call the code for JUMP
+8114  270B                BEQ do_JUMP
+                          ; else, D is not 0, leave (aka advance Y by 2 and leave (NEXT))
+8116  3122                LEAY 2,Y    ; Y+2 -> Y
+8118                      NEXT
+8118  6EB1                JMP [,Y++]
+                      
+                      ; defword "JUMP", "JUMP", 0
+811A                  h_JUMP
+811A  810C                FDB h_0BR ; link
+811C  04                  FCB 4 ; len | flags
+811D  4A554D50            FCB $4A, $55, $4D, $50 ; "JUMP"
+8121                  do_JUMP
+                          ; (IP) points to literal address to jump to
+                          ; instead of next word
+8121  10AEA4              LDY ,Y
+8124                      NEXT
+8124  6EB1                JMP [,Y++]
+                      
+                      ; defword "EXEC", "EXEC", 0
+8126                  h_EXEC
+8126  811A                FDB h_JUMP ; link
+8128  04                  FCB 4 ; len | flags
+8129  45584543            FCB $45, $58, $45, $43 ; "EXEC"
+812D                  do_EXEC
+                          ; ( ADDR -- )
+                          ; JMP to addr on the stack, single instr on the 6809
+812D  3780                PULU PC
+                      
+                      ; defword "FETCH", "@", 0
+812F                  h_FETCH
+812F  8126                FDB h_EXEC ; link
+8131  01                  FCB 1 ; len | flags
+8132  40                  FCB $40 ; "@"
+8133                  do_FETCH
+                      ; @ ( ADDR -- value )
+                      ; We read the data at the address on the
+                      ; stack and put the value on the stack
+                          ; load addr on ToS into X
+8133  3710                PULU X
+                          ; Read data at ,X and save on ToS
+8135  EC84                LDD ,X
+8137  3606                PSHU D
+8139                      NEXT
+8139  6EB1                JMP [,Y++]
+                      
+                      ; defword "CFETCH", "C@", 0
+813B                  h_CFETCH
+813B  812F                FDB h_FETCH ; link
+813D  02                  FCB 2 ; len | flags
+813E  4340                FCB $43, $40 ; "C@"
+8140                  do_CFETCH
+                      ; C@ ( ADDR -- byte )
+                      ; We read 1 byte at the address on the
+                      ; stack and put the value on the stack
+                          ; load addr on ToS into X
+8140  3710                PULU X
+                          ; Read data at ,X and save on ToS
+8142  4F                  CLRA
+8143  E684                LDB ,X
+8145  3606                PSHU D
+8147                      NEXT
+8147  6EB1                JMP [,Y++]
+                      
+                      ; defword "STORE", "!", 0
+8149                  h_STORE
+8149  813B                FDB h_CFETCH ; link
+814B  01                  FCB 1 ; len | flags
+814C  21                  FCB $21 ; "!"
+814D                  do_STORE
+                      ; ! ( value ADDR -- )
+                      ; Stores value at ADDR
+814D  3710                PULU X
+814F  3706                PULU D
+8151  ED84                STD ,X
+8153                      NEXT
+8153  6EB1                JMP [,Y++]
+                      
+                      ; defword "CSTORE", "C!", 0
+8155                  h_CSTORE
+8155  8149                FDB h_STORE ; link
+8157  02                  FCB 2 ; len | flags
+8158  4321                FCB $43, $21 ; "C!"
+815A                  do_CSTORE
+                      ; C! ( byte ADDR -- )
+                      ; Stores value at ADDR
+815A  3710                PULU X
+815C  3706                PULU D      ; we pull 2 bytes (1 cell)
+815E  E784                STB ,X      ; but only store B (1 byte)
+8160                      NEXT
+8160  6EB1                JMP [,Y++]
+                      
+                      ; A test "colon word"!
+                      ; defword "DOUBLE", "DOUBLE", 0
+8162                  h_DOUBLE
+8162  8155                FDB h_CSTORE ; link
+8164  06                  FCB 6 ; len | flags
+8165  444F55424C45        FCB $44, $4F, $55, $42, $4C, $45 ; "DOUBLE"
+816B                  do_DOUBLE
+816B  7E8034              JMP do_COLON
+816E  80B4                FDB do_DUP
+8170  8061                FDB do_PLUS
+8172  8044                FDB do_SEMI
+                      
+                      ; defword "EMIT", "EMIT", 0
+8174                  h_EMIT
+8174  8162                FDB h_DOUBLE ; link
+8176  04                  FCB 4 ; len | flags
+8177  454D4954            FCB $45, $4D, $49, $54 ; "EMIT"
+817B                  do_EMIT
+                      ; EMIT emit a single char
+                          ; char is on stack
+817B  3706                PULU D
+817D  BD829B              JSR putc
+8180                      NEXT
+8180  6EB1                JMP [,Y++]
+                      
+                      ; defword "GETC", "GETC", 0
+8182                  h_GETC
+8182  8174                FDB h_EMIT ; link
+8184  04                  FCB 4 ; len | flags
+8185  47455443            FCB $47, $45, $54, $43 ; "GETC"
+8189                  do_GETC
+                      ; get a single char from IO, leave on stack
+                      ; ( -- char )
+8189  4F                  CLRA
+818A  BD8295              JSR getc ; leaves the char in B
+818D  3606                PSHU D
+818F                      NEXT
+818F  6EB1                JMP [,Y++]
+                      
+                      ; defword "PRINT", ".", 0
+8191                  h_PRINT
+8191  8182                FDB h_GETC ; link
+8193  01                  FCB 1 ; len | flags
+8194  2E                  FCB $2E ; "."
+8195                  do_PRINT
+                      ; Print data on top of stack (in hex for now)
+                      ; ( cell -- )
+8195  E6C4                LDB  ,U
+8197  BD822A              JSR print_byte
+819A  2005                BRA do_CPRINT    ; jump over CPRINT's header and continue in CPRINT
+                      
+                      ; defword "CPRINT", "C.", 0
+819C                  h_CPRINT
+819C  8191                FDB h_PRINT ; link
+819E  02                  FCB 2 ; len | flags
+819F  432E                FCB $43, $2E ; "C."
+81A1                  do_CPRINT
+                      ; Print data on top of stack (in hex for now)
+                      ; ( byte -- )
+81A1  E641                LDB 1,U
+81A3  BD822A              JSR print_byte
+81A6  C620                LDB #' '
+81A8  BD829B              JSR putc
+81AB  3342                LEAU 2,U       ; DROP
+81AD                      NEXT
+81AD  6EB1                JMP [,Y++]
+                      
+                      ; defword "KEY", "KEY", 0
+81AF                  h_KEY
+81AF  819C                FDB h_CPRINT ; link
+81B1  03                  FCB 3 ; len | flags
+81B2  4B4559              FCB $4B, $45, $59 ; "KEY"
+81B5                  do_KEY
+                      ; ( -- char )
+81B5  BD8217              JSR _KEY
+81B8  4F                  CLRA
+81B9  3606                PSHU D
+81BB                      NEXT
+81BB  6EB1                JMP [,Y++]
+                      
+                      ; defword "ENDLESS", "ENDLESS", 0
+81BD                  h_ENDLESS
+81BD  81AF                FDB h_KEY ; link
+81BF  07                  FCB 7 ; len | flags
+81C0  454E444C455353      FCB $45, $4E, $44, $4C, $45, $53, $53 ; "ENDLESS"
+81C7                  do_ENDLESS
+81C7  7E81C7              JMP *
+                      
+                      ; defword "WORD", "WORD", 0
+81CA                  h_WORD
+81CA  81BD                FDB h_ENDLESS ; link
+81CC  04                  FCB 4 ; len | flags
+81CD  574F5244            FCB $57, $4F, $52, $44 ; "WORD"
+81D1                  do_WORD
+81D1  C620                LDB #$20        ; space separator
+81D3  200A                BRA _PARSE
+                      
+                      ; defword "PARSE", "PARSE", 0
+81D5                  h_PARSE
+81D5  81CA                FDB h_WORD ; link
+81D7  05                  FCB 5 ; len | flags
+81D8  5041525345          FCB $50, $41, $52, $53, $45 ; "PARSE"
+81DD                  do_PARSE
+                      ; parse input buffer with separator SEPR
+                      ; ( SEPR -- ADDR LEN )
+                      
+81DD  3706                PULU D          ; separator char is in B
+81DF                  _PARSE
+81DF  D705                STB SEPR        ; we store the separator in SEPR
+                      
+81E1                  1 ; @skip
+81E1  BD8217              JSR _KEY
+                      
+81E4  D105                CMPB SEPR
+81E6  27F9                BEQ 1b          ; @skip
+                      
+81E8  C10A                CMPB #$0A
+81EA  2704                BEQ 3f ; @return0        ;--> we have to exit leaving two zeros ( 0 0 ) on the stack
+                      
+81EC  C10D                CMPB #$0D
+81EE  2608                BNE 5f ; @startW
+                          ; fallthrough into @return0
+                      
+81F0                  3 ; @return0
+                      
+                      ;    lda BOOT
+                      ;    bne 4f        ; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+                      ;    inc OK        ; we mark 1 the OK flag
+                      ; 4 ;
+                      
+81F0  4F                  CLRA
+81F1  5F                  CLRB        ; we reset D to 0
+81F2  1F01                TFR D,X     ; we reset X to 0 too
+81F4  3616                PSHU D,X    ; we push both zeros in one instruction
+81F6                      NEXT        ; exit PARSE leaving 2 zeros on the stack
+81F6  6EB1                JMP [,Y++]
+                      
+                      ; start of word
+81F8                  5 ; @startW:
+                          ; First we store the ADDR on stack
+                      
+                          ; exiting _KEY X is the next char, so X-1 is the starting addr of our word
+81F8  301F                LEAX -1,X
+81FA  3610                PSHU X      ; We push the ADDR to ToS
+                      
+81FC  8601                LDA #1      ; we initialize A to 1, to count chars in WORD
+                      
+81FE                  6 ; @next2:
+81FE  BD8217              JSR _KEY
+                      
+8201  D105                CMPB SEPR
+8203  270B                BEQ 8f      ; @endW
+                      
+8205  C10A                CMPB #$0A
+8207  2707                BEQ 7f      ; @return
+                      
+8209  C10D                CMPB #$0D
+820B  2703                BEQ 7f      ; @return
+                      
+820D  4C                  INCA
+820E  20EE                BRA 6b      ; @next2
+                      
+8210                  7 ; @return
+                      
+                      ;    lda BOOT
+                      ;    bne @endW    ; if boot<>0 (aka boot mode, we don't set the prompt to 1)
+                      ;    inc OK        ; we mark 1 the OK flag
+                      
+8210                  8 ; @endW
+                          ; compute length
+                      
+8210  1F89                TFR A,B     ; length is in A, we transfer it to B
+8212  4F                  CLRA        ; and reset A to 0
+8213  3606                PSHU D      ; finally we push the length to the stack
+8215                      NEXT
+8215  6EB1                JMP [,Y++]
+                      
+8217                  _KEY
+                      ; Returns with the next char from input buffer in register B
+8217  BE0484              LDX INPUT_IDX
+                      
+821A  BC0482              CMPX INPUT_END  ; reached end of input string?
+821D  2706                BEQ 1f  ; @eos
+                      
+821F  E680                LDB ,X+
+8221  BF0484              STX INPUT_IDX
+8224  39                  RTS
+                      
+8225                  1 ; @eos
+8225  BD8242              JSR getline
+8228  20ED                BRA _KEY
+                      
+822A                  print_byte
+                      ; Input: a byte to print is in B
+                      ; Clobbers A
+822A  1F98                TFR  B,A    ; saves B to A
+822C  54                  LSRB        ; here we shift right
+822D  54                  LSRB        ; to get B's HI nibble
+822E  54                  LSRB
+822F  54                  LSRB
+8230  BD8237              JSR print_nibble
+                      
+8233  1F89                TFR  A,B    ; restores B
+8235  C40F                ANDB #$0F   ; keep LO nibble
+                          ; fallthrough to print_nibble
+                      
+8237                  print_nibble
+                      ; Input: nibble to print is in B
+8237  C10A                CMPB #$0A
+8239  2502                BCS  1f
+823B  CB67                ADDB #$67
+823D                  1
+823D  C830                EORB  #$30
+823F  7E829B              JMP  putc
+                      
+                      ;-----------------------------------------------------------------
+                      ; Input Buffer Routines
+                      
+                      ; Getline refills the INPUT buffer
+8242                  getline
+8242  8E0400              LDX #INPUT      ; X is our index into the INPUT buffer
+8245  BF0484              STX INPUT_IDX   ; resets the INPUT index position to start of buffer
+                      
+8248                  1 ; @next
+8248  BD8295              JSR getc    ; get new char into B register
+                      
+824B  C108                CMPB #BKSPACE ; Backspace, CTRL-H
+824D  271E                BEQ 3f      ; @bkspace
+                      
+824F  C17F                CMPB #$7F   ; Backspace key on Linux?
+8251  271A                BEQ 3f      ; @bkspace
+                      
+8253  8C0480              CMPX #INPUT_BUFFER_END
+8256  2723                BEQ 4f      ; @buffer_end
+                      
+8258  E780                STB ,X+     ; save char to INPUT buffer
+                      
+825A  C10A                CMPB #$0A   ; \n
+825C  2709                BEQ 2f      ; @finish
+                      
+825E  C10D                CMPB #$0D   ; \n
+8260  2705                BEQ 2f      ; @finish
+                      
+8262  BD829B              JSR putc
+8265  20E1                BRA 1b      ; @next
+                      
+8267                  2 ; @finish
+8267  BF0482              STX INPUT_END
+826A  7E828B              JMP _crlf
+                      
+826D                  3 ; @bkspace
+826D  8C0400              CMPX #INPUT     ; start of line?
+8270  27D6                BEQ 1b          ; @next, ie do nothing
+8272  C608                LDB #BKSPACE
+8274  BD829B              JSR putc        ; echo char
+8277  301F                LEAX -1,X       ; else: decrease X by 1
+8279  20CD                BRA 1b          ; @next
+                      
+827B                  4 ; @buffer_end
+827B  1F98                TFR B, A        ; save char (B) into register A
+827D  C608                LDB #BKSPACE    ; send bckspace to erase last char
+827F  BD829B              JSR putc
+8282  1F89                TFR A, B        ; restore last char
+8284  E71F                STB -1,X        ; save char to INPUT
+8286  BD829B              JSR putc
+8289  20BD                BRA 1b          ; @next
+                      
+828B                  _crlf
+828B  C60A                LDB #$0a    ; CR
+828D  BD829B              JSR putc
+8290  C60D                LDB #$0d    ; LF
+8292  7E829B              JMP putc    ; will also to RTS
+                      
+                      ;-----------------------------------------------------------------
+                      ; IO Routines
+                      
+8295                  getc
+                          ; load a char from input into B
+8295  F6F004              LDB IN_CHAR
+8298  27FB                BEQ getc
+829A  39                  RTS
+                      
+829B                  putc
+                          ; send char in B to output
+829B  F7F001              STB OU_CHAR
+829E  39                  RTS
+                      
+                      ;-----------------------------------------------------------------
+                      ; p_LATEST point to the latest defined word (using defword macro)
+81D5                  p_LATEST    EQU    h_PARSE
+                      ;
+                      ; -----------------------------------------------------------
+                      ;
+                      ; RAM AREA - SYSTEM VARIABLES
+000A                      BSS
+0400                      ORG TOP_US_STACK
+0400                  INPUT               RMB     MAX_LEN ; CMD string (extend as needed, up to 256!)
+0480                  INPUT_BUFFER_END    RMB     2       ; Addr of the first byte after INPUT buffer
+0482                  INPUT_END           RMB     2       ; End of the INPUT string
+0484                  INPUT_IDX           RMB     2       ; Position into the input buffer
+                      
+                      ; Base of user memory area.
+0486                  USER_BASE               ; Start of user area (Dictionary)

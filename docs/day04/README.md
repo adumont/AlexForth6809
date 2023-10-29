@@ -59,7 +59,7 @@ defword "EMIT"
 Similarly, `GETC` is again self explanatory: we clear `A` (High byte of `D`), call `getc` to read a byte from input into `B` and push `D` to the data stack:
 
 ```
-defword "GETC"
+defword "GETC" ( -- char )
 ; get a single char from IO, leave on stack
     CLRA
     JSR getc ; leaves the char in B
@@ -100,6 +100,12 @@ Otherwise it will add the character to the buffer. Finally, if the character was
 `PARSE` is a Forth word that takes a separator as argument (a character) and returns the next token from the input buffer (a token is anything between the separators). The returned values are the address and length of the token string (if any) found between two separators. `PARSE` uses the `_KEY` routine.
 
 Lastly, `WORD` is another Forth word that will simply parse the input buffer using a space (`' '`) separator. We will use it to parse each token (a word or a number) from the input buffer. `WORD` calls `PARSE`.
+
+`WORD` returns the address of the token (in the input buffer), and the length if any token is found, or two zeros otherwise.
+
+```
+WORD ( -- addr len | 0 0 )
+```
 
 ## Printing more complex values
 
